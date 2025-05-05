@@ -1,6 +1,24 @@
-###################
-# S3 BUCKET
-###################
+# ===========================================================
+#                     DarkTracer Cloud Threat
+#                     Glue Configuration File
+# ===========================================================
+# Description: Configures AWS Glue resources including database,
+#             crawler, and ETL jobs for log processing and 
+#             threat analysis
+# 
+# Last Updated: 2024-04-19
+# ===========================================================
+
+# ----------------------------------------------------------
+#                     S3 Bucket Configuration
+# ----------------------------------------------------------
+# Purpose: Creates and configures S3 bucket for cleaned logs
+# Features:
+# - Environment-specific naming
+# - Force destroy enabled for cleanup
+# - Standard tagging strategy
+# ----------------------------------------------------------
+
 resource "aws_s3_bucket" "cleaned_logs" {
   bucket        = "${var.project_name}-cleaned-logs-${terraform.workspace}"
   force_destroy = true
@@ -12,9 +30,16 @@ resource "aws_s3_bucket" "cleaned_logs" {
   }
 }
 
-###################
-# GLUE DATABASE
-###################
+# ----------------------------------------------------------
+#                  Glue Database Configuration
+# ----------------------------------------------------------
+# Purpose: Creates Glue catalog database for storing metadata
+# Features:
+# - Environment-specific naming
+# - Metadata management
+# - Resource tagging
+# ----------------------------------------------------------
+
 resource "aws_glue_catalog_database" "clean_logs_db" {
   name = "${var.project_name}_clean_logs_${terraform.workspace}"
 
@@ -25,9 +50,17 @@ resource "aws_glue_catalog_database" "clean_logs_db" {
   }
 }
 
-###################
-# GLUE CRAWLER
-###################
+# ----------------------------------------------------------
+#                  Glue Crawler Configuration
+# ----------------------------------------------------------
+# Purpose: Sets up Glue crawler for automated schema discovery
+# Features:
+# - Daily schedule (noon UTC)
+# - S3 target configuration
+# - Partition handling
+# - IAM role integration
+# ----------------------------------------------------------
+
 resource "aws_glue_crawler" "clean_logs_crawler" {
   name          = "${var.project_name}-crawler-${terraform.workspace}"
   role          = aws_iam_role.glue_service_role.arn
@@ -53,9 +86,16 @@ resource "aws_glue_crawler" "clean_logs_crawler" {
   }
 }
 
-###################
-# IAM ROLE
-###################
+# ----------------------------------------------------------
+#                  IAM Role Configuration
+# ----------------------------------------------------------
+# Purpose: Defines IAM role for Glue service
+# Features:
+# - Service principal configuration
+# - AssumeRole policy
+# - Resource tagging
+# ----------------------------------------------------------
+
 resource "aws_iam_role" "glue_service_role" {
   name = "${var.project_name}-glue-role-${terraform.workspace}"
 
@@ -79,9 +119,17 @@ resource "aws_iam_role" "glue_service_role" {
   }
 }
 
-###################
-# IAM POLICY
-###################
+# ----------------------------------------------------------
+#                  IAM Policy Configuration
+# ----------------------------------------------------------
+# Purpose: Defines permissions for Glue service role
+# Features:
+# - S3 bucket access permissions
+# - Glue service permissions
+# - CloudWatch logging permissions
+# - Resource-specific access control
+# ----------------------------------------------------------
+
 resource "aws_iam_role_policy" "glue_policy" {
   name = "${var.project_name}-glue-policy-${terraform.workspace}"
   role = aws_iam_role.glue_service_role.id
@@ -143,10 +191,18 @@ resource "aws_iam_role_policy" "glue_policy" {
   })
 }
 
+# ----------------------------------------------------------
+#                  Glue Job Configuration
+# ----------------------------------------------------------
+# Purpose: Defines ETL job for log processing
+# Features:
+# - Python script location
+# - Worker configuration
+# - Job bookmarks
+# - CloudWatch integration
+# - Spark configuration
+# ----------------------------------------------------------
 
-###################
-# GLUE JOB
-###################
 resource "aws_glue_job" "clean_logs_job" {
   name              = "${var.project_name}-clean-logs-${terraform.workspace}"
   role_arn          = aws_iam_role.glue_service_role.arn
@@ -189,9 +245,16 @@ resource "aws_glue_job" "clean_logs_job" {
   }
 }
 
-###################
-# CLOUDWATCH METRIC ALARM (Optional)
-###################
+# ----------------------------------------------------------
+#            CloudWatch Alarm Configuration
+# ----------------------------------------------------------
+# Purpose: Monitors Glue job failures
+# Features:
+# - Failure detection
+# - Metric monitoring
+# - Optional SNS integration
+# ----------------------------------------------------------
+
 resource "aws_cloudwatch_metric_alarm" "glue_job_failure" {
   alarm_name          = "${var.project_name}-glue-job-failure-${terraform.workspace}"
   comparison_operator = "GreaterThanThreshold"
@@ -208,4 +271,3 @@ resource "aws_cloudwatch_metric_alarm" "glue_job_failure" {
     JobName = aws_glue_job.clean_logs_job.name
   }
 }
-

@@ -1,6 +1,24 @@
-# Security group for the honeypot instance
-# Allows inbound SSH (22) and HTTP (80) traffic from anywhere
-# Allows all outbound traffic
+# ===========================================================
+#                     DarkTracer Cloud Threat
+#                     EC2 Configuration File
+# ===========================================================
+# Description: Configures EC2 instances and related resources
+#             for the DarkTracer honeypot system, including
+#             security groups and CloudWatch agent setup
+# 
+# Last Updated: 2024-04-19
+# ===========================================================
+
+# ----------------------------------------------------------
+#                Security Group Configuration
+# ----------------------------------------------------------
+# Purpose: Defines security group for the honeypot instance
+# Includes:
+# - Inbound rules for SSH (22), HTTP (80), and FTP (21)
+# - Outbound rules for all traffic
+# - Tag management
+# ----------------------------------------------------------
+
 resource "aws_security_group" "honeypot_sg" {
   name        = "${var.project_name}-honeypot-sg-${terraform.workspace}"
   description = "Allow SSH and HTTP"
@@ -30,7 +48,6 @@ resource "aws_security_group" "honeypot_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -43,20 +60,35 @@ resource "aws_security_group" "honeypot_sg" {
   })
 }
 
+# ----------------------------------------------------------
+#            CloudWatch Agent Configuration
+# ----------------------------------------------------------
+# Purpose: Sets up CloudWatch agent configuration in SSM
+# Includes:
+# - SSM parameter for agent configuration
+# - Template file integration
+# ----------------------------------------------------------
+
 resource "aws_ssm_parameter" "cloudwatch_agent_config" {
   name      = "/CWA_config"
   type      = "String"
   value     = templatefile("${path.root}/modules/cloudwatch/cwagent-config.tpl.json", {})
-  overwrite = true # Add this line to allow overwriting existing parameter
+  overwrite = true # Allow overwriting existing parameter
 }
 
+# ----------------------------------------------------------
+#                EC2 Instance Configuration
+# ----------------------------------------------------------
+# Purpose: Deploys and configures the honeypot EC2 instance
+# Includes:
+# - Instance specifications
+# - User data script for setup
+# - CloudWatch agent installation
+# - Network configuration
+# ----------------------------------------------------------
 
-
-# EC2 instance that serves as the honeypot
-# Uses Amazon Linux 2 AMI and t2.micro instance type
-# Placed in public subnet with public IP for accessibility
 resource "aws_instance" "honeypot" {
-  ami                         = "ami-0c02fb55956c7d316" # Replace with Ubuntu AMI if needed
+  ami                         = "ami-0c02fb55956c7d316" # Amazon Linux 2 AMI
   instance_type               = "t2.micro"
   subnet_id                   = aws_subnet.public_subnet.id
   vpc_security_group_ids      = [aws_security_group.honeypot_sg.id]
@@ -65,6 +97,12 @@ resource "aws_instance" "honeypot" {
   iam_instance_profile        = aws_iam_instance_profile.ec2_instance_profile.name
   depends_on                  = [aws_ssm_parameter.cloudwatch_agent_config]
 
+  # ----------------------------------------------------------
+  # User Data Script
+  # - Updates system packages
+  # - Installs and configures CloudWatch agent
+  # - Sets up monitoring services
+  # ----------------------------------------------------------
   user_data = <<-EOF
   #!/bin/bash
   set -e  # Exit on error
@@ -90,18 +128,34 @@ resource "aws_instance" "honeypot" {
     -s
 EOF
 
-
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-honeypot-${terraform.workspace}"
   })
 }
 
-# Wait for the EC2 instance to be in a running state before proceeding
-# This is useful if you have any dependencies that need to wait for the instance to be fully up
+# ----------------------------------------------------------
+#            Instance Startup Configuration
+# ----------------------------------------------------------
+# Purpose: Manages instance startup and configuration
+# Includes:
+# - Startup delay for dependencies
+# - CloudWatch agent refresh mechanism
+# ----------------------------------------------------------
+
 resource "time_sleep" "wait_for_ec2" {
   depends_on      = [aws_instance.honeypot]
   create_duration = "60s"
 }
+
+# ----------------------------------------------------------
+#            CloudWatch Agent Management
+# ----------------------------------------------------------
+# Purpose: Handles CloudWatch agent updates and monitoring
+# Includes:
+# - Configuration refresh trigger
+# - Remote execution for agent management
+# - SSH connection configuration
+# ----------------------------------------------------------
 
 resource "null_resource" "refresh_cloudwatch_agent" {
   triggers = {
@@ -111,7 +165,7 @@ resource "null_resource" "refresh_cloudwatch_agent" {
   provisioner "remote-exec" {
     inline = [
       "set -x",                                                                          # Enable command tracing
-      "sudo systemctl status amazon-cloudwatch-agent",                                   # Check if agent is running
+      "sudo systemctl status amazon-cloudwatch-agent",                                   # Check agent status
       "ls -l /opt/aws/amazon-cloudwatch-agent/bin/",                                     # Verify binary exists
       "sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status", # Check agent status
       "sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c ssm:/CWA_config -s"
@@ -125,5 +179,4 @@ resource "null_resource" "refresh_cloudwatch_agent" {
       timeout     = "2m"
     }
   }
-
 }

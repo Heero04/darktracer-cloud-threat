@@ -1,4 +1,24 @@
-# CloudWatch Event Rule
+# ===========================================================
+#                     DarkTracer Cloud Threat
+#                     CloudWatch Configuration
+# ===========================================================
+# Description: Configures CloudWatch resources including event rules,
+#             log groups, and event targets for the DarkTracer 
+#             threat detection system
+# 
+# Last Updated: 2024-04-19
+# ===========================================================
+
+# ----------------------------------------------------------
+#            CloudWatch Event Rule Configuration
+# ----------------------------------------------------------
+# Purpose: Sets up daily trigger for Athena unload operations
+# Includes:
+# - Event rule definition
+# - Schedule configuration
+# - Tag management
+# ----------------------------------------------------------
+
 resource "aws_cloudwatch_event_rule" "daily_trigger" {
   name                = "${var.project_name}-daily-athena-unload-${terraform.workspace}"
   description         = "Triggers Athena unload Lambda function once per day"
@@ -7,15 +27,30 @@ resource "aws_cloudwatch_event_rule" "daily_trigger" {
   tags = local.common_tags
 }
 
-# CloudWatch Event Target for Athena unload
-resource "aws_cloudwatch_event_target" "athena_unload_target" { # Changed from "lambda_target"
+# ----------------------------------------------------------
+#            CloudWatch Event Target Configuration
+# ----------------------------------------------------------
+# Purpose: Links CloudWatch Events to Lambda function
+# Includes:
+# - Event target specification
+# - Lambda function association
+# ----------------------------------------------------------
+
+resource "aws_cloudwatch_event_target" "athena_unload_target" {
   rule      = aws_cloudwatch_event_rule.daily_trigger.name
   target_id = "AthenaDailyUnload"
   arn       = aws_lambda_function.athena_unload.arn
 }
 
+# ----------------------------------------------------------
+#            Lambda Permissions Configuration
+# ----------------------------------------------------------
+# Purpose: Sets up necessary permissions for CloudWatch
+# Includes:
+# - CloudWatch Events invoke permissions
+# - Lambda function access rights
+# ----------------------------------------------------------
 
-# Lambda permission for CloudWatch Events
 resource "aws_lambda_permission" "allow_cloudwatch" {
   statement_id  = "AllowCloudWatchEventsInvoke"
   action        = "lambda:InvokeFunction"
@@ -24,7 +59,15 @@ resource "aws_lambda_permission" "allow_cloudwatch" {
   source_arn    = aws_cloudwatch_event_rule.daily_trigger.arn
 }
 
-# CloudWatch Log Group
+# ----------------------------------------------------------
+#            CloudWatch Log Groups Configuration
+# ----------------------------------------------------------
+# Purpose: Defines log groups for Lambda functions
+# Includes:
+# - Log retention settings
+# - Tag management
+# ----------------------------------------------------------
+
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/${aws_lambda_function.athena_unload.function_name}"
   retention_in_days = 14
@@ -39,8 +82,16 @@ resource "aws_cloudwatch_log_group" "lambda_threat_analyzer" {
   tags = local.common_tags
 }
 
+# ----------------------------------------------------------
+#            Common Tags Configuration
+# ----------------------------------------------------------
+# Purpose: Defines standard tags for all resources
+# Includes:
+# - Project identification
+# - Environment specification
+# - Service categorization
+# ----------------------------------------------------------
 
-# Common tags
 locals {
   common_tags = {
     Project     = var.project_name
@@ -50,8 +101,15 @@ locals {
   }
 }
 
-# Add the new OpenCanary log subscription configuration here
-# CloudWatch Log Subscription Filter for OpenCanary Logs
+# ----------------------------------------------------------
+#            OpenCanary Log Subscription Configuration
+# ----------------------------------------------------------
+# Purpose: Sets up log subscription for honeypot monitoring
+# Includes:
+# - Log subscription filter
+# - Lambda function permissions
+# ----------------------------------------------------------
+
 resource "aws_cloudwatch_log_subscription_filter" "honeypot_logs" {
   name            = "honeypot-logs-filter"
   log_group_name  = "/darktracer/honeypot/opencanary"
@@ -59,7 +117,6 @@ resource "aws_cloudwatch_log_subscription_filter" "honeypot_logs" {
   destination_arn = aws_lambda_function.lambda_threat_analyzer.arn
 }
 
-# Lambda Permission for CloudWatch Logs
 resource "aws_lambda_permission" "allow_cloudwatch_honeypot" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"

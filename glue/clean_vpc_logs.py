@@ -1,3 +1,11 @@
+# This AWS Glue ETL job performs the following operations:
+# 1. Initializes Spark and Glue contexts for data processing
+# 2. Reads gzipped CSV log files from an S3 bucket with a nested folder structure (year/month/day/hour)
+# 3. Validates if data exists in the source location
+# 4. Prints basic data statistics like column names and row count
+# 5. Writes the processed data to a target S3 bucket in CSV format with overwrite mode
+# 6. Includes error handling and job status logging
+
 import sys
 from datetime import datetime
 from awsglue.transforms import *

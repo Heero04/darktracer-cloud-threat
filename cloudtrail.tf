@@ -1,9 +1,31 @@
-# S3 bucket to store CloudTrail logs with force_destroy enabled to allow deletion even when not empty
+# ===========================================================
+#                     DarkTracer Cloud Threat
+#                     CloudTrail Configuration
+# ===========================================================
+# Description: Configures AWS CloudTrail and associated S3 bucket
+#             for comprehensive logging and audit capabilities
+# 
+# Last Updated: 2024-04-19
+# ===========================================================
+
+# ----------------------------------------------------------
+#                S3 Bucket Configuration
+# ----------------------------------------------------------
+# Purpose: Creates and configures S3 bucket for CloudTrail logs
+# Includes:
+# - Bucket creation with force destroy enabled
+# - Lifecycle rules for log retention
+# - Server-side encryption
+# - Public access blocking
+# ----------------------------------------------------------
+
+# S3 bucket to store CloudTrail logs with force_destroy enabled
 resource "aws_s3_bucket" "cloudtrail_logs" {
   bucket        = "${var.project_name}-cloudtrail-logs-${terraform.workspace}"
   force_destroy = true
 }
 
+# Lifecycle configuration for log retention
 resource "aws_s3_bucket_lifecycle_configuration" "cloudtrail_logs_lifecycle" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
@@ -21,7 +43,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "cloudtrail_logs_lifecycle" {
   }
 }
 
-# Enable default server-side encryption with AES256 for all objects in the bucket
+# ----------------------------------------------------------
+#            Security Configuration for S3 Bucket
+# ----------------------------------------------------------
+# Purpose: Implements security measures for the CloudTrail bucket
+# Includes:
+# - Server-side encryption configuration
+# - Bucket policy for CloudTrail access
+# - Public access blocking
+# ----------------------------------------------------------
+
+# Enable default server-side encryption
 resource "aws_s3_bucket_server_side_encryption_configuration" "cloudtrail_logs" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
@@ -32,10 +64,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "cloudtrail_logs" 
   }
 }
 
-# S3 bucket policy to allow CloudTrail to write logs to the bucket
-# Grants CloudTrail permissions to:
-# 1. Check bucket ACL (GetBucketAcl)
-# 2. Write log files (PutObject) with bucket owner having full control
+# S3 bucket policy for CloudTrail permissions
 resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
@@ -69,8 +98,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs_policy" {
   })
 }
 
-
-# Block public access to the log bucket
+# Block all public access to the bucket
 resource "aws_s3_bucket_public_access_block" "cloudtrail_logs_block" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
 
@@ -80,7 +108,18 @@ resource "aws_s3_bucket_public_access_block" "cloudtrail_logs_block" {
   restrict_public_buckets = true
 }
 
-# CloudTrail for global + EC2 API activity
+# ----------------------------------------------------------
+#            CloudTrail Configuration
+# ----------------------------------------------------------
+# Purpose: Sets up CloudTrail for comprehensive API logging
+# Features:
+# - Multi-region trail
+# - Global service event logging
+# - Log file validation
+# - Management event logging
+# ----------------------------------------------------------
+
+# CloudTrail configuration
 resource "aws_cloudtrail" "main" {
   name                          = "${var.project_name}-trail-${terraform.workspace}"
   s3_bucket_name                = aws_s3_bucket.cloudtrail_logs.id
@@ -91,7 +130,6 @@ resource "aws_cloudtrail" "main" {
   event_selector {
     read_write_type           = "All"
     include_management_events = true
-    # Removed invalid data_resource block
   }
 
   tags = merge(var.common_tags, {
@@ -99,5 +137,9 @@ resource "aws_cloudtrail" "main" {
   })
 }
 
-# Get the account ID
+# ----------------------------------------------------------
+#            Supporting Resources
+# ----------------------------------------------------------
+
+# Get the current AWS account ID
 data "aws_caller_identity" "current" {}

@@ -45,8 +45,19 @@ gitleaks
 gitleaks.tar.gz
 gitleaks-linux-arm64.tar.gz
 
-
+# key files
+# These files may contain sensitive information and should be kept private
+# and not shared in version control.
+# Make sure to replace these with your actual key file names
+# and paths as needed.
 kali-key
 kali-key.pub
 kali.sh
 darktracer-keypair.pem
+
+# Ignore any other files or directories that are not relevant to the project
+modules/
+output.json
+opencanary.sh
+s3_event.tf
+sagemaker-training-config.json

@@ -1,6 +1,14 @@
+# This Lambda function processes user questions about log data stored in S3 using Amazon Bedrock
+# It performs the following steps:
+# 1. Extracts a question from the incoming event (supports both direct JSON and API Gateway formats)
+# 2. Retrieves log data from a specified S3 bucket
+# 3. Constructs a prompt combining the logs and user question
+# 4. Calls Amazon Bedrock to analyze the logs and answer the question
+# 5. Returns the model's response in a formatted JSON response
+
 import boto3, json, os
 
-# Initialize clients
+# Initialize AWS service clients for S3 and Bedrock
 s3 = boto3.client("s3")
 bedrock = boto3.client("bedrock-runtime")
 

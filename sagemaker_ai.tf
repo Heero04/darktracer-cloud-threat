@@ -1,6 +1,23 @@
-#----------------------------------------
-# IAM ROLES AND POLICIES
-#----------------------------------------
+# ===========================================================
+#                     DarkTracer Cloud Threat
+#                     SageMaker IAM Configuration
+# ===========================================================
+# Description: Configures IAM roles and policies for SageMaker
+#             execution, including ECR access, S3 permissions,
+#             and CloudWatch logging capabilities
+# 
+# Last Updated: 2024-04-19
+# ===========================================================
+
+# ----------------------------------------------------------
+#            SageMaker Execution Role
+# ----------------------------------------------------------
+# Purpose: Creates main IAM role for SageMaker execution
+# Features:
+# - Trust relationship with SageMaker service
+# - Environment-specific naming
+# - AssumeRole permissions
+# ----------------------------------------------------------
 
 resource "aws_iam_role" "sagemaker_execution" {
   name = "${var.project_name}-sagemaker-exec-role-${terraform.workspace}"
@@ -15,18 +32,17 @@ resource "aws_iam_role" "sagemaker_execution" {
   })
 }
 
-#----------------------------------------
-# MODEL
-#----------------------------------------
+# ----------------------------------------------------------
+#            ECR Access Policy
+# ----------------------------------------------------------
+# Purpose: Enables SageMaker to pull container images from ECR
+# Features:
+# - Image layer access
+# - Authentication permissions
+# - Repository access control
+# - Region-specific configuration
+# ----------------------------------------------------------
 
-
-
-
-#----------------------------------------
-# IAM ROLES AND POLICIES
-#----------------------------------------
-
-# Add ECR pull permissions
 resource "aws_iam_role_policy" "sagemaker_ecr" {
   name = "sagemaker-ecr-access"
   role = aws_iam_role.sagemaker_execution.id
@@ -37,9 +53,9 @@ resource "aws_iam_role_policy" "sagemaker_ecr" {
       {
         Effect = "Allow"
         Action = [
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-          "ecr:BatchCheckLayerAvailability"
+          "ecr:GetDownloadUrlForLayer",     # Get image layer download URLs
+          "ecr:BatchGetImage",              # Retrieve container images
+          "ecr:BatchCheckLayerAvailability" # Verify image layer availability
         ]
         Resource = [
           "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/*"
@@ -48,15 +64,25 @@ resource "aws_iam_role_policy" "sagemaker_ecr" {
       {
         Effect = "Allow"
         Action = [
-          "ecr:GetAuthorizationToken"
+          "ecr:GetAuthorizationToken"       # Authenticate with ECR
         ]
-        Resource = ["*"]
+        Resource = ["*"]                    # Required for authentication
       }
     ]
   })
 }
 
-# Add S3 access for model artifacts
+# ----------------------------------------------------------
+#            S3 Access Policy
+# ----------------------------------------------------------
+# Purpose: Provides access to S3 for model artifacts
+# Features:
+# - Read/write permissions
+# - Bucket listing capability
+# - Specific bucket access
+# - Least privilege access
+# ----------------------------------------------------------
+
 resource "aws_iam_role_policy" "sagemaker_s3" {
   name = "sagemaker-s3-access"
   role = aws_iam_role.sagemaker_execution.id
@@ -67,20 +93,30 @@ resource "aws_iam_role_policy" "sagemaker_s3" {
       {
         Effect = "Allow"
         Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:ListBucket"
+          "s3:GetObject",    # Read objects
+          "s3:PutObject",    # Write objects
+          "s3:ListBucket"    # List bucket contents
         ]
         Resource = [
-          "${aws_s3_bucket.training_bucket.arn}",
-          "${aws_s3_bucket.training_bucket.arn}/*"
+          "${aws_s3_bucket.training_bucket.arn}",        # Bucket-level access
+          "${aws_s3_bucket.training_bucket.arn}/*"       # Object-level access
         ]
       }
     ]
   })
 }
 
-# Add CloudWatch logging permissions
+# ----------------------------------------------------------
+#            CloudWatch Logging Policy
+# ----------------------------------------------------------
+# Purpose: Enables CloudWatch logging and metrics
+# Features:
+# - Metric publishing
+# - Log stream management
+# - Log group creation
+# - Stream description access
+# ----------------------------------------------------------
+
 resource "aws_iam_role_policy" "sagemaker_cloudwatch" {
   name = "sagemaker-cloudwatch-access"
   role = aws_iam_role.sagemaker_execution.id
@@ -91,17 +127,14 @@ resource "aws_iam_role_policy" "sagemaker_cloudwatch" {
       {
         Effect = "Allow"
         Action = [
-          "cloudwatch:PutMetricData",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:CreateLogGroup",
-          "logs:DescribeLogStreams"
+          "cloudwatch:PutMetricData",      # Publish metrics
+          "logs:CreateLogStream",          # Create new log streams
+          "logs:PutLogEvents",             # Write log events
+          "logs:CreateLogGroup",           # Create new log groups
+          "logs:DescribeLogStreams"        # View log stream metadata
         ]
-        Resource = "*"
+        Resource = "*"                     # Required for CloudWatch functionality
       }
     ]
   })
 }
-
-#----------------------------------------
-
