@@ -1,0 +1,41 @@
+name: AWS Optimization Checks
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+jobs:
+  aws_optimization:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+    permissions:
+      id-token: write
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::469440861178:role/GitHubActionsRole
+          aws-region: us-east-1
+
+      - name: AWS Trusted Advisor Security & Cost Report
+        run: |
+          echo "## 💰 AWS Trusted Advisor" >> $GITHUB_STEP_SUMMARY
+          aws support describe-trusted-advisor-checks --region us-east-1 \
+            | jq -r '.checks[] | "- \(.name) (\(.category))"' >> $GITHUB_STEP_SUMMARY
+
+      - name: Save GitHub Summary to File
+        run: cp "$GITHUB_STEP_SUMMARY" summary.md
+
+      - name: Upload Summary Report
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: security-scan-summary
+          path: summary.md

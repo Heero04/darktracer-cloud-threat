@@ -1,0 +1,22 @@
+{
+    "logs": {
+      "logs_collected": {
+        "files": {
+          "collect_list": [
+            {
+              "file_path": "/var/log/messages",
+              "log_group_name": "/darktracer/honeypot/messages",
+              "log_stream_name": "{instance_id}-messages"
+            },
+            {
+              "file_path": "/var/tmp/opencanary.log",
+              "log_group_name": "/darktracer/honeypot/opencanary",
+              "log_stream_name": "{instance_id}-opencanary",
+              "timestamp_format": "%Y-%m-%d %H:%M:%S"
+            }
+          ]
+        }
+      }
+    }
+  }
+  

@@ -1,0 +1,57 @@
+name: Terraform Security Scan
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+jobs:
+  terraform_security:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+    permissions:
+      id-token: write
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::469440861178:role/GitHubActionsRole
+          aws-region: us-east-1
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.11.4
+
+      - name: Terraform Init & Validate
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Run Terrascan
+        uses: tenable/terrascan-action@v1.4.1
+        with:
+          iac_type: terraform
+          iac_version: v14
+          policy_type: aws
+          only_warn: true
+
+      - name: Run tfsec Security Scan
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          version: latest
+          working_directory: .
+          soft_fail: false
+          format: sarif
+
+      - name: tfsec Summary
+        run: |
+          echo "## 🧪 tfsec Results" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Terraform security scan completed with no blocking issues." >> $GITHUB_STEP_SUMMARY

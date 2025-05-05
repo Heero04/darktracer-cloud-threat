@@ -1,0 +1,34 @@
+{
+    "TrainingJobName": "honeypot-training-job-dev-v12-3",
+    "RoleArn": "arn:aws:iam::469440861178:role/darktracer-sagemaker-exec-role-dev",
+    "AlgorithmSpecification": {
+      "TrainingImage": "469440861178.dkr.ecr.us-east-1.amazonaws.com/darktracer-sagemaker-trainer:latest",
+      "TrainingInputMode": "File"
+    },
+    "InputDataConfig": [
+      {
+        "ChannelName": "training",
+        "DataSource": {
+          "S3DataSource": {
+            "S3DataType": "S3Prefix",
+            "S3Uri": "s3://darktracer-training-bucket-dev/input/",
+            "S3DataDistributionType": "FullyReplicated"
+          }
+        },
+        "CompressionType": "None",
+        "RecordWrapperType": "None"
+      }
+    ],
+    "OutputDataConfig": {
+      "S3OutputPath": "s3://darktracer-training-bucket-dev/output/"
+    },
+    "ResourceConfig": {
+      "InstanceType": "ml.m5.large",
+      "InstanceCount": 1,
+      "VolumeSizeInGB": 10
+    },
+    "StoppingCondition": {
+      "MaxRuntimeInSeconds": 600
+    }
+  }
+  
