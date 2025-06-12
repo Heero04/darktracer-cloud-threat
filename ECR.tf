@@ -23,6 +23,9 @@
 resource "aws_ecr_repository" "sagemaker_trainer" {
   name = "darktracer-sagemaker-trainer"
 
+  # Automatically delete the repository even if images exist
+  force_delete = true
+  
   # Enable automatic vulnerability scanning for container images
   image_scanning_configuration {
     scan_on_push = true
